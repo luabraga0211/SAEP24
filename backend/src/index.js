@@ -3,99 +3,121 @@ const cors = require('cors');
 const { Pool } = require('pg');
 
 const app = express();
+
+// Configuração do pool de conexão com o banco de dados
 const pool = new Pool({
-    user: 'postgres',
+    user: 'postgres', // Substitua pelo seu usuário do PostgreSQL (verifique no seu computador na hora da prova!)
     host: 'localhost',
-    database: 'TarefasKanban',
-    password: '12345',
-    port: 5432,
+    database: 'tarefasKanban', // Nome da sua database
+    password: '12345', // Substitua pela sua senha
+    port: 5432, // Porta padrão do PostgreSQL
 });
 
 app.use(cors());
 app.use(express.json());
 
-// Rota para buscar todas as tarefas
+// Endpoint para obter todas as tarefas
 app.get('/tarefas', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM tarefas');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Erro ao buscar tarefas' });
-    }
+  try {
+    const result = await pool.query('SELECT * FROM tarefas');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Erro ao buscar tarefas' });
+  }
 });
 
-// Rota para buscar uma tarefa por ID
+// Endpoint para obter uma tarefa específica
 app.get('/tarefas/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const result = await pool.query('SELECT * FROM tarefas WHERE id_tarefa = $1', [id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Tarefa não encontrada' });
-        }
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Erro ao buscar tarefa' });
+  const { id } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM tarefas WHERE id_tarefa = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarefa não encontrada' });
     }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Erro ao buscar tarefa' });
+  }
 });
 
-// Rota para adicionar uma tarefa
+// Endpoint para adicionar uma nova tarefa
 app.post('/tarefas', async (req, res) => {
-    const { id_usuario, descricao, nome_setor, prioridade, status } = req.body;
-    try {
-        const result = await pool.query(
-            'INSERT INTO tarefas (id_usuario, descricao, nome_setor, prioridade, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [id_usuario, descricao, nome_setor, prioridade, status]
-        );
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Erro ao adicionar tarefa' });
-    }
+  const { id_usuario, descricao, nome_setor, prioridade, data_cadastro, status } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO tarefas (id_usuario, descricao, nome_setor, prioridade, data_cadastro, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [id_usuario, descricao, nome_setor, prioridade, data_cadastro, status]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Erro ao adicionar tarefa' });
+  }
 });
 
-// Rota para deletar uma tarefa
+// Endpoint para atualizar uma tarefa existente
+app.put('/tarefas/:id', async (req, res) => {
+  const { id } = req.params;
+  const { id_usuario, descricao, nome_setor, prioridade, data_cadastro, status } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE tarefas SET id_usuario = $1, descricao = $2, nome_setor = $3, prioridade = $4, data_cadastro = $5, status = $6 WHERE id_tarefa = $7 RETURNING *',
+      [id_usuario, descricao, nome_setor, prioridade, data_cadastro, status, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarefa não encontrada' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Erro ao atualizar tarefa' });
+  }
+});
+
+// Endpoint para deletar uma tarefa
 app.delete('/tarefas/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const result = await pool.query('DELETE FROM tarefas WHERE id_tarefa = $1 RETURNING *', [id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Tarefa não encontrada' });
-        }
-        res.json({ message: 'Tarefa deletada com sucesso' });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Erro ao deletar tarefa' });
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM tarefas WHERE id_tarefa = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarefa não encontrada' });
     }
+    res.json({ message: 'Tarefa deletada com sucesso' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Erro ao deletar tarefa' });
+  }
 });
 
-// Rota para adicionar um usuário
+// Endpoint para adicionar um novo cliente
 app.post('/usuarios', async (req, res) => {
-    const { nome, email, data_nascimento } = req.body;
-    try {
-        const result = await pool.query(
-            'INSERT INTO usuarios (nome, email, data_nascimento) VALUES ($1, $2, $3) RETURNING *',
-            [nome, email, data_nascimento]
-        );
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Erro ao adicionar usuário' });
-    }
+  const { nome, email } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO usuario (nome, email) VALUES ($1, $2) RETURNING *',
+      [nome, email]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Erro ao adicionar usuario' });
+  }
 });
 
-// Rota para buscar todos os usuários
+// Endpoint para listar todos os clientes
 app.get('/usuarios', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM usuarios');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Erro ao buscar usuários' });
-    }
+  try {
+    const result = await pool.query('SELECT * FROM usuario');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Erro ao buscar usuario' });
+  }
 });
 
+// Inicializa o servidor na porta 3000
 app.listen(3000, () => {
-    console.log('Servidor rodando na porta 3000');
+  console.log('Servidor rodando na porta 3000');
 });
